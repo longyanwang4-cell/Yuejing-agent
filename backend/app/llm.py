@@ -43,7 +43,7 @@ def _post(messages):
     return r.json()["choices"][0]["message"]["content"]
 
 
-def call_json(system: str, user_messages: list, schema: dict, extra_check=None) -> dict:
+def call_json(system: str, user_messages: list, schema: dict, extra_check=None, normalize=None) -> dict:
     """extra_check(obj) 返回错误字符串表示不合规。总共最多 2 次尝试。"""
     validator = Draft7Validator(schema)
     messages = [{"role": "system", "content": system}] + user_messages
@@ -51,6 +51,8 @@ def call_json(system: str, user_messages: list, schema: dict, extra_check=None) 
     for attempt in range(2):
         try:
             obj = _extract_json(_post(messages))
+            if normalize:
+                obj = normalize(obj)          # 只做确定性修复（不编造内容），修不了的仍交给下面的校验拒绝
             errs = list(validator.iter_errors(obj))
             if errs:
                 last = "schema: " + errs[0].message

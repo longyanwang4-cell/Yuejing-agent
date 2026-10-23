@@ -346,3 +346,109 @@ def test_skinned_scenario_gets_story_matching_goal_hint():
     assert r["scenario"]["success_hint"] == STORY_HINTS["boundary_courage_disliked"]
     plain = C.post("/api/practice/start", json={"scenario_id": "roommate_night_game_disliked"}).json()
     assert "贴标签" in plain["scenario"]["success_hint"]            # 不换皮时保持原样
+
+
+# ---------------- 限流的来源 IP：不能被客户端伪造 ----------------
+def _req(xff, peer="10.0.0.5"):
+    from starlette.requests import Request
+    hdr = [(b"x-forwarded-for", xff.encode())] if xff is not None else []
+    return Request({"type": "http", "headers": hdr, "client": (peer, 1234)})
+
+
+def test_client_ip_ignores_forwarded_header_when_not_behind_proxy(monkeypatch):
+    from app.main import client_ip
+    monkeypatch.setattr(config, "TRUST_PROXY", False)
+    assert client_ip(_req("1.1.1.1")) == "10.0.0.5"          # 没有代理时，头是客户端写的，一律不信
+
+
+def test_client_ip_takes_rightmost_so_client_cannot_spoof(monkeypatch):
+    from app.main import client_ip
+    monkeypatch.setattr(config, "TRUST_PROXY", True)
+    # nginx 追加模式：客户端塞了假头 1.1.1.1，nginx 在右边追加真实来源 203.0.113.9
+    assert client_ip(_req("1.1.1.1, 203.0.113.9")) == "203.0.113.9"
+    assert client_ip(_req("203.0.113.9")) == "203.0.113.9"
+    assert client_ip(_req("  203.0.113.9  ")) == "203.0.113.9"
+
+
+def test_client_ip_falls_back_when_header_missing_or_empty(monkeypatch):
+    from app.main import client_ip
+    monkeypatch.setattr(config, "TRUST_PROXY", True)
+    assert client_ip(_req(None)) == "10.0.0.5"
+    assert client_ip(_req("")) == "10.0.0.5"
+    assert client_ip(_req(" , ")) == "10.0.0.5"
+
+
+def test_spoofed_headers_cannot_bypass_per_ip_limit(monkeypatch):
+    """端到端：同一真实 IP 换着花样伪造头，仍然只算一个人，超限后走离线。"""
+    from app.main import client_ip
+    monkeypatch.setattr(config, "TRUST_PROXY", True)
+    monkeypatch.setattr(config, "PER_IP_PER_HOUR", 2)
+    monkeypatch.setattr(config, "DAILY_MODEL_CALL_CAP", 100)
+    q = Quota()
+    ips = {client_ip(_req(f"9.9.9.{i}, 203.0.113.9")) for i in range(10)}
+    assert ips == {"203.0.113.9"}
+    assert q.allow("203.0.113.9") and q.allow("203.0.113.9") and not q.allow("203.0.113.9")
+
+
+# ---------------- 评分输出的确定性修复（来自真实模型上观察到的三种偏差） ----------------
+def _score_sc():
+    return service.SCEN_MAP[CHARGER]          # rubric_dims = ["boundary", "clarity"]
+
+
+def _good_item(turn, quote, dim="boundary"):
+    return {"dim": dim, "turn": turn, "quote": quote, "comment": "c"}
+
+
+def test_normalize_nulls_out_of_scope_dims_and_fills_missing_keys():
+    sc = _score_sc()
+    o = {"scores": {"clarity": 70, "respect": 88, "boundary": 72}, "strengths": [], "improvements": []}   # respect 被填了，response_to_pushback 漏了
+    out = rules.normalize_score(o, sc)
+    assert out["scores"] == {"clarity": 70, "respect": None, "boundary": 72, "response_to_pushback": None}
+
+
+def test_normalize_never_touches_in_scope_scores():
+    sc = _score_sc()
+    o = {"scores": {"clarity": 41, "boundary": 99}, "strengths": [], "improvements": []}
+    out = rules.normalize_score(o, sc)
+    assert out["scores"]["clarity"] == 41 and out["scores"]["boundary"] == 99
+
+
+def test_normalize_drops_strength_that_collides_with_improvement_only():
+    sc = _score_sc()
+    o = {"scores": {}, "strengths": [_good_item(4, "a"), _good_item(3, "b"), _good_item(None, None)],
+         "improvements": [dict(_good_item(4, "a"), suggestion="s")]}
+    out = rules.normalize_score(o, sc)
+    assert [f["turn"] for f in out["strengths"]] == [3, None]          # 撞车的第 4 轮被去掉，其余原样
+    assert len(out["improvements"]) == 1
+
+
+def test_normalize_does_not_launder_fabricated_quotes_or_missing_in_scope_scores():
+    sc = _score_sc()
+    log = [{"turn": 1, "user_utterance": "不行，我自己要用一整天"}]
+    fake = {"scores": {"clarity": 70, "boundary": 72}, "strengths": [_good_item(1, "我根本没说过的话")], "improvements": []}
+    assert "逐字" in rules.check_score_output(rules.normalize_score(fake, sc), sc, log)            # 编造引用：仍被拒
+    missing = {"scores": {"clarity": 70, "boundary": None}, "strengths": [], "improvements": []}
+    assert "boundary" in rules.check_score_output(rules.normalize_score(missing, sc), sc, log)     # 该评的维度缺分：仍被拒
+
+
+def test_normalize_is_safe_on_garbage_shapes():
+    sc = _score_sc()
+    for junk in (None, [], "x", 3, {"scores": "bad"}, {"strengths": "bad", "improvements": [1]}):
+        rules.normalize_score(junk, sc)                                # 不抛异常，交给 schema 去拒绝
+
+
+def test_live_score_with_the_three_real_deviations_is_accepted_not_degraded(monkeypatch):
+    sid, _ = play(CHARGER, ["不行，我自己要用一整天"])
+    ref = C.post("/api/score", json={"session_id": sid}).json()["result"]
+    sid2, _ = play(CHARGER, ["不行，我自己要用一整天"])
+    q = "不行，我自己要用一整天"
+    forged = json.loads(json.dumps(ref))
+    forged["scores"] = {"clarity": 70, "respect": 88, "boundary": 72}                        # 偏差 1+2：多填 respect，漏 response_to_pushback
+    forged["strengths"] = [_good_item(1, q)]
+    forged["improvements"] = [dict(_good_item(1, q, "clarity"), suggestion="s")]             # 偏差 3：同一轮两边都有
+    live(monkeypatch, lambda m: json.dumps(forged, ensure_ascii=False))
+    r = C.post("/api/score", json={"session_id": sid2}).json()
+    assert r["mode"] == "live", r["notice"]
+    res = r["result"]
+    assert res["scores"]["respect"] is None and res["scores"]["response_to_pushback"] is None
+    assert res["overall"] == rules.rnd((70 + 72) / 2) and res["strengths"] == []

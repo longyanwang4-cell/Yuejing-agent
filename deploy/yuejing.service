@@ -1,0 +1,31 @@
+# 阅境 Agent 后端。放到 /etc/systemd/system/yuejing.service
+# 路径假设：仓库克隆在 /opt/yuejing，虚拟环境在 /opt/yuejing/venv（见 DEPLOY.md）
+# 本文件没有在 Ubuntu 上实际启动验证过。若启动失败，先看 `journalctl -u yuejing -n 50`，
+# 再把下面「加固」那几行临时注释掉，确认是不是它们引起的。
+
+[Unit]
+Description=Yuejing Agent (FastAPI)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=yuejing
+Group=yuejing
+WorkingDirectory=/opt/yuejing/backend
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+# 只监听本机，外部必须经过 nginx。这样别人没法绕过 nginx 直接打 8765，也就没法伪造来源 IP。
+# --workers 1 不能改大：会话和限流计数都存在进程内存里，多进程会让会话随机失效（410）、限额各算各的。
+ExecStart=/opt/yuejing/venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8765 --workers 1
+Restart=on-failure
+RestartSec=3
+
+# 加固：服务只读代码和 .env，不需要写任何地方
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

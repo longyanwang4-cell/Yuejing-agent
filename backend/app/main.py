@@ -16,10 +16,17 @@ FRONTEND = config.ROOT / "app" / "dist"
 
 
 def client_ip(req: Request) -> str:
+    """限流用的来源 IP。
+
+    TRUST_PROXY=1 时取 X-Forwarded-For 的「最右一项」，而不是最左一项：
+    最左一项是客户端自己能随便写的（`X-Forwarded-For: 1.1.1.1`），取它等于让攻击者每次换一个假 IP，
+    每 IP 限流形同虚设，全站日额度也会被烧光。最右一项是离后端最近的那个代理（nginx）写进去的真实来源。
+    前提是只有一层反向代理；多层代理要改成「从右数第 N 项」。"""
     if config.TRUST_PROXY:
         xff = req.headers.get("x-forwarded-for", "")
-        if xff:
-            return xff.split(",")[0].strip()
+        parts = [p.strip() for p in xff.split(",") if p.strip()]
+        if parts:
+            return parts[-1]
     return req.client.host if req.client else "unknown"
 
 

@@ -280,7 +280,8 @@ def score(session_id, ip: str) -> dict:
                             evidence_log_json=json.dumps(s["log"], ensure_ascii=False, indent=1), **final)
             try:
                 o = llm.call_json(system, [{"role": "user", "content": "请按要求输出评分 JSON。"}], SCHEMAS["score"],
-                                  lambda x: rules.check_score_output(x, sc, s["log"]))
+                                  lambda x: rules.check_score_output(x, sc, s["log"]),
+                                  lambda x: rules.normalize_score(x, sc))
                 o = _fix_score(o, sc, card, final, end_reason, ref)
                 errs = list(_V["score"].iter_errors(o))
                 if errs:

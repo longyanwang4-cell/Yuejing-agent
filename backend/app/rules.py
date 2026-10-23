@@ -97,6 +97,30 @@ def recompute_overall(scores: dict, rubric_dims: list) -> int:
     return rnd(sum(vals) / len(vals)) if vals else 0
 
 
+def normalize_score(obj, scenario: dict):
+    """模型评分输出里有两类偏差，实测在真实模型上几乎每次都出现，后端可以确定性地修，不必整份作废：
+
+    1. 场景不评的维度（不在 rubric_dims 里）被填了分，或者整个键漏掉。Prompt 要求这些维度填 null，
+       所以这里统一置 null。这是执行规范，不是改分：场景要评的维度的分数一个都不动。
+    2. 同一 turn 同时出现在 strengths 和 improvements。保留 improvements（它带建议、更可执行），
+       去掉撞车的那条优点。Prompt 本就要求「宁可少写一条」。
+
+    刻意不修的：quote 不是逐字原话、turn 不存在、场景要评的维度缺分。这些意味着模型在编造或漏评，
+    必须拒绝重试，不能由后端「补」一个看起来合理的值。"""
+    if not isinstance(obj, dict):
+        return obj
+    scores = obj.get("scores")
+    if isinstance(scores, dict):
+        for d in DIMS:
+            if d not in scenario["rubric_dims"]:
+                scores[d] = None
+    st, im = obj.get("strengths"), obj.get("improvements")
+    if isinstance(st, list) and isinstance(im, list):
+        clash = {f.get("turn") for f in im if isinstance(f, dict) and f.get("turn") is not None}
+        obj["strengths"] = [f for f in st if not (isinstance(f, dict) and f.get("turn") in clash)]
+    return obj
+
+
 def check_score_output(obj: dict, scenario: dict, log: list):
     """评分输出的运行时校验。返回错误字符串，None 表示通过。"""
     for d in DIMS:
