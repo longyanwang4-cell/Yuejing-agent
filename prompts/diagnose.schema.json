@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "阅境 Agent 诊断模块输出",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "safety_flag",
+    "scene_tag",
+    "secondary_scene_tag",
+    "primary_obstacle",
+    "confidence",
+    "evidence",
+    "matched_card_ids",
+    "rubric_dims",
+    "next_action",
+    "clarifying_question",
+    "user_facing_message"
+  ],
+  "properties": {
+    "safety_flag": { "enum": ["none", "crisis"] },
+    "scene_tag": { "enum": ["拒绝与边界", "冲突应对", "unsupported"] },
+    "secondary_scene_tag": {
+      "oneOf": [
+        { "enum": ["拒绝与边界", "冲突应对", "unsupported"] },
+        { "type": "null" }
+      ]
+    },
+    "primary_obstacle": {
+      "oneOf": [
+        {
+          "enum": [
+            "unclear_boundary",
+            "fear_of_being_disliked",
+            "over_compliance",
+            "provoked_into_struggle",
+            "stuck_on_who_is_right",
+            "anger_as_only_tool"
+          ]
+        },
+        { "type": "null" }
+      ]
+    },
+    "confidence": { "enum": ["high", "medium", "low"] },
+    "evidence": { "type": "string", "minLength": 1, "maxLength": 40 },
+    "matched_card_ids": {
+      "type": "array",
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "boundary_task_separation",
+          "boundary_courage_disliked",
+          "boundary_not_others_expectation",
+          "conflict_power_struggle",
+          "conflict_being_right_is_trap",
+          "conflict_anger_is_a_tool"
+        ]
+      }
+    },
+    "rubric_dims": {
+      "type": "array",
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": { "enum": ["clarity", "respect", "boundary", "response_to_pushback"] }
+    },
+    "next_action": { "enum": ["ask_once", "offer_choice", "refer_out", "decline_scope"] },
+    "clarifying_question": {
+      "oneOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }]
+    },
+    "user_facing_message": { "type": "string", "minLength": 1 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "next_action": { "const": "ask_once" } }, "required": ["next_action"] },
+      "then": {
+        "properties": {
+          "clarifying_question": { "type": "string", "minLength": 1 },
+          "confidence": { "const": "low" },
+          "matched_card_ids": { "maxItems": 0 }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "next_action": { "const": "offer_choice" } }, "required": ["next_action"] },
+      "then": {
+        "properties": {
+          "scene_tag": { "enum": ["拒绝与边界", "冲突应对"] },
+          "matched_card_ids": { "minItems": 1 },
+          "rubric_dims": { "minItems": 1 },
+          "clarifying_question": { "type": "null" }
+        },
+        "required": ["primary_obstacle"],
+        "not": { "properties": { "primary_obstacle": { "type": "null" } } }
+      }
+    },
+    {
+      "if": { "properties": { "safety_flag": { "const": "crisis" } }, "required": ["safety_flag"] },
+      "then": {
+        "properties": {
+          "next_action": { "const": "refer_out" },
+          "scene_tag": { "const": "unsupported" },
+          "matched_card_ids": { "maxItems": 0 },
+          "primary_obstacle": { "type": "null" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "next_action": { "const": "decline_scope" } }, "required": ["next_action"] },
+      "then": {
+        "properties": {
+          "scene_tag": { "const": "unsupported" },
+          "matched_card_ids": { "maxItems": 0 },
+          "primary_obstacle": { "type": "null" }
+        }
+      }
+    }
+  ]
+}

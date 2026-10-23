@@ -1,0 +1,226 @@
+/* ——— 书房 HUD 的暖色材质变量 ———
+   只新增，不覆盖 main.css 里的旧变量：典籍面板等别处的冷色主题照旧。 */
+:root {
+  --paper: #f0e6d2;
+  --paper-dim: #ddceac;
+  --ink-deep: #2b2018;
+  --ink-soft: #5c4a34;
+  --cinnabar: #8c2e22;
+  --gold-warm: #c9a55a;
+  --gold-light: #e8c97a;
+  --night: rgba(26, 20, 15, 0.86);
+  --night-line: rgba(201, 165, 90, 0.34);
+}
+
+/* 右侧功能菜单：暖墨漆板 + 金线，选中态用金 */
+.menu {
+  position: absolute; right: 28px; top: 50%; transform: translateY(-50%);
+  width: 262px; padding: 10px; border-radius: 12px;
+  background-color: var(--night);
+  background-image: url('/ui/gold.png'), linear-gradient(165deg, rgba(36, 27, 19, 0.94), rgba(18, 13, 9, 0.95));
+  background-size: 240px auto, auto;
+  background-blend-mode: soft-light, normal;
+  border: 1px solid var(--night-line);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(232, 201, 122, 0.16);
+  animation: rise 0.8s 0.5s both cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.menu-item {
+  width: 100%; display: flex; align-items: center; gap: 14px; text-align: left;
+  padding: 12px; border-radius: 8px; color: #efe2c6;
+  transition: background 0.2s, transform 0.2s;
+}
+.menu-item:hover { background: rgba(201, 165, 90, 0.14); transform: translateX(-3px); }
+.menu-item.active {
+  background: linear-gradient(90deg, rgba(201, 165, 90, 0.3), rgba(201, 165, 90, 0.05));
+  box-shadow: inset 0 0 0 1px rgba(201, 165, 90, 0.55), inset 3px 0 0 0 var(--gold-light);
+}
+.menu-item.active b { color: #fff0c9; }
+.menu-item.active .menu-ico { color: #ffeab4; border-color: rgba(232, 201, 122, 0.62); background: rgba(201, 165, 90, 0.16); }
+.menu-ico {
+  flex: none; width: 42px; height: 42px; display: grid; place-items: center; border-radius: 8px;
+  background: rgba(12, 9, 6, 0.55); border: 1px solid rgba(201, 165, 90, 0.34); color: var(--gold-light);
+  box-shadow: inset 0 1px 0 rgba(232, 201, 122, 0.12);
+}
+.menu-ico svg { width: 22px; height: 22px; }
+.menu-item b { display: block; font-size: 16px; font-weight: 700; letter-spacing: 0.05em; }
+.menu-item small { display: block; margin-top: 2px; font-size: 12px; color: #b3a184; letter-spacing: 0.03em; }
+
+/* ——— 智能体气泡：一张落进回纹金框里的宣纸 ———
+   paper.png 满铺纸面，frame.png 走 border-image 九宫格（152 切片 / 24px），
+   ::before 已让位给结构，装饰件（纸舌、印章）是 #bubble 里的 <i>。
+   hidden 由 main.css 的 [hidden] + 本文件的 .bubble[hidden] 双保险。 */
+.bubble {
+  position: absolute; z-index: 5; max-width: min(460px, 88vw);
+  padding: 15px 40px 20px 20px;
+  background-color: var(--paper);
+  background-image: url('/ui/paper.png');
+  background-position: center;
+  background-size: 900px auto;
+  background-repeat: no-repeat;
+  border: 24px solid transparent;
+  border-image: url('/ui/frame.png') 152 / 24px / 0 round;
+  color: var(--ink-deep);
+  filter: drop-shadow(0 16px 30px rgba(20, 12, 6, 0.5)) drop-shadow(0 3px 6px rgba(20, 12, 6, 0.22));
+  box-shadow: inset 0 0 26px rgba(92, 74, 52, 0.18);
+  animation: pop 0.45s cubic-bezier(0.2, 1.2, 0.3, 1) both; transform-origin: left center;
+}
+.bubble[hidden] { display: none; }
+.bubble.top { transform-origin: 30% 100%; }
+
+/* 左下纸舌：金色描边 + 纸芯的两层三角，贴在金框外沿 */
+.bubble-tail {
+  position: absolute; left: -36px; top: 20px; width: 12px; height: 26px;
+  z-index: 1; pointer-events: none;
+}
+.bubble-tail::before,
+.bubble-tail::after {
+  content: ""; position: absolute; inset: 0;
+  clip-path: polygon(100% 0, 100% 100%, 0 50%);
+}
+.bubble-tail::before { background: linear-gradient(90deg, var(--gold-light), var(--gold-warm) 62%, #9c7a3d); }
+.bubble-tail::after { inset: 2px 0 2px 3px; background: linear-gradient(90deg, var(--paper-dim), var(--paper)); }
+/* 在人物上方时，纸舌从框底伸出去 */
+.bubble.top .bubble-tail {
+  left: calc(30% - 12px); top: auto; bottom: -36px;
+  width: 24px; height: 12px;
+}
+.bubble.top .bubble-tail::before { clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.bubble.top .bubble-tail::after {
+  inset: 0 2px 2px;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+/* 右下角朱砂印：落在纸的留白里，不压正文 */
+.bubble-seal {
+  position: absolute; right: 3px; bottom: 5px; width: 34px; height: 34px;
+  background: url('/ui/seal.png') center / contain no-repeat;
+  transform: rotate(-7deg); opacity: 0.8;
+  mix-blend-mode: multiply; pointer-events: none;
+}
+
+.bubble .who {
+  display: block; margin: 0 0 9px;
+  font: 600 12px/1.2 var(--kai); letter-spacing: 0.24em; color: var(--cinnabar);
+}
+.bubble .who::after {
+  content: ""; display: block; width: 92px; height: 11px; margin-top: 5px;
+  background: url('/ui/divider.png') left center / 100% auto no-repeat;
+  opacity: 0.75;
+}
+.bubble p {
+  font-size: 17px; line-height: 1.75; color: var(--ink-deep); min-height: 1.75em;
+  letter-spacing: 0.01em; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+.bubble .caret::after { content: "▍"; margin-left: 2px; color: var(--cinnabar); animation: blink 0.9s steps(1) infinite; }
+.bubble .dots span { display: inline-block; width: 7px; height: 7px; margin: 0 3px; border-radius: 50%; background: var(--cinnabar); animation: bounce 1s infinite; }
+.bubble .dots span:nth-child(2) { animation-delay: 0.15s; }
+.bubble .dots span:nth-child(3) { animation-delay: 0.3s; }
+.choices { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 14px; }
+.choices:empty { display: none; }
+.choice {
+  padding: 8px 16px; border-radius: 7px; font-size: 14px; letter-spacing: 0.05em;
+  color: var(--ink-deep);
+  background: rgba(255, 250, 238, 0.42);
+  border: 1px solid rgba(140, 46, 34, 0.32);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 1px 2px rgba(44, 30, 18, 0.12);
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+.choice:hover { background: rgba(201, 165, 90, 0.25); border-color: var(--gold-warm); transform: translateY(-2px); }
+.choice.primary { background: linear-gradient(135deg, #f0d79a, #c99a3e); border-color: rgba(120, 80, 20, 0.45); color: #2a1a08; font-weight: 700; }
+.choice.ghost { background: rgba(240, 230, 210, 0.18); border-color: rgba(92, 74, 52, 0.34); color: var(--ink-soft); }
+.choice.ghost:hover { background: rgba(201, 165, 90, 0.2); border-color: var(--gold-warm); color: var(--ink-deep); }
+
+/* 顶部返回：一张压了金线的纸条（覆盖 main.css 的冷色胶囊） */
+.back {
+  padding: 9px 18px; border-radius: 7px;
+  font: 500 14px var(--kai); letter-spacing: 0.12em;
+  color: var(--ink-deep);
+  background-color: rgba(240, 230, 210, 0.94);
+  background-image: url('/ui/paper.png');
+  background-position: center;
+  background-size: 420px auto;
+  background-repeat: no-repeat;
+  border: 1px solid rgba(201, 165, 90, 0.6);
+  box-shadow: 0 6px 18px rgba(20, 12, 6, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+.back:hover {
+  background-color: #f7edd8;
+  background-image: url('/ui/paper.png');
+  background-position: center;
+  background-size: 420px auto;
+  background-repeat: no-repeat;
+  border-color: var(--gold-warm);
+  color: var(--cinnabar);
+}
+
+/* 底部输入坞：一条落在桌面上的宣纸，发送键仍是金箔 */
+.dock { position: absolute; left: 50%; bottom: 44px; transform: translateX(-50%); width: min(720px, 92vw); animation: rise 0.5s both; }
+.chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 12px; }
+.chip {
+  padding: 6px 14px; border-radius: 6px; font-size: 13px; letter-spacing: 0.04em;
+  color: var(--ink-deep);
+  background-color: rgba(240, 230, 210, 0.92);
+  background-image: url('/ui/paper.png');
+  background-position: center;
+  background-size: 620px auto;
+  border: 1px solid rgba(201, 165, 90, 0.5);
+  box-shadow: 0 6px 16px rgba(20, 12, 6, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s, transform 0.2s;
+}
+.chip:hover, .chip.on {
+  background-color: var(--gold-warm);
+  background-image: url('/ui/gold.png');
+  background-position: center;
+  background-size: 620px auto;
+  border-color: #a8813c; color: #24180d; transform: translateY(-1px);
+}
+.dock-form {
+  display: flex; gap: 8px; padding: 8px; border-radius: 10px;
+  background-color: var(--paper);
+  background-image: url('/ui/paper.png');
+  background-position: center;
+  background-size: cover;
+  border: 1px solid rgba(201, 165, 90, 0.55);
+  box-shadow: 0 14px 38px rgba(20, 12, 6, 0.5), inset 0 0 18px rgba(92, 74, 52, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.dock-form input {
+  flex: 1; min-width: 0; padding: 12px 14px; font-size: 15px;
+  color: var(--ink-deep); background: none; border: 0; outline: 0; caret-color: var(--cinnabar);
+}
+.dock-form input::placeholder { color: rgba(92, 74, 52, 0.55); }
+.dock-form button[type="submit"] {
+  padding: 0 24px; border-radius: 7px; font-weight: 700; letter-spacing: 0.14em;
+  background: linear-gradient(135deg, #f0d79a, #c99a3e); color: #2a1a08;
+  border: 1px solid rgba(120, 80, 20, 0.35);
+  box-shadow: inset 0 1px 0 rgba(255, 245, 210, 0.55), 0 4px 12px rgba(20, 12, 6, 0.3);
+}
+
+/* 漫游准星：正中一点 + 细环，对着可交互物时下方浮出提示 */
+.crosshair { position: absolute; left: 50%; top: 50%; z-index: 6; width: 0; height: 0; pointer-events: none; }
+.ch-dot {
+  position: absolute; left: -2.5px; top: -2.5px; width: 5px; height: 5px; border-radius: 50%;
+  background: #ffeab8;
+  box-shadow: 0 0 0 1px rgba(12, 8, 2, 0.55), 0 0 10px rgba(255, 214, 130, 0.95);
+}
+.ch-ring {
+  position: absolute; left: -13px; top: -13px; width: 26px; height: 26px; border-radius: 50%;
+  border: 1px solid rgba(255, 233, 176, 0.5);
+  box-shadow: 0 0 0 1px rgba(12, 8, 2, 0.22), inset 0 0 0 1px rgba(12, 8, 2, 0.22);
+}
+.xlabel {
+  position: absolute; left: 0; top: 24px; transform: translateX(-50%); white-space: nowrap;
+  padding: 6px 14px; border-radius: 999px; font: 500 13px var(--sans);
+  letter-spacing: 0.08em; color: #ffeec4; background: rgba(8, 12, 28, 0.74);
+  border: 1px solid rgba(232, 201, 122, 0.38); backdrop-filter: blur(8px);
+  opacity: 0; transition: opacity 0.16s;
+}
+.xlabel.on { opacity: 1; }
+
+@keyframes rise { from { opacity: 0; transform: translate(var(--tx, 0), calc(var(--ty, 0px) + 18px)); } }
+.menu { --ty: -50%; }
+.dock { --tx: -50%; }
+@keyframes pop { from { opacity: 0; transform: scale(0.88); } }
+@keyframes blink { 50% { opacity: 0; } }
+@keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-6px); opacity: 1; } }

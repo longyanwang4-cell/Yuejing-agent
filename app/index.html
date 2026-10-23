@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>阅境书房</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E📖%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="gl"></canvas>
+    <div class="vignette"></div>
+
+    <header class="brand">
+      <span class="brand-mark">阅</span>
+      <span class="brand-text"><b>阅境</b><small>历史 · 社交 · 沟通练习</small></span>
+    </header>
+
+    <button id="back" class="back" hidden>← 回到书房</button>
+
+    <div id="bubble" class="bubble" hidden>
+      <i class="bubble-tail" aria-hidden="true"></i>
+      <i class="bubble-seal" aria-hidden="true"></i>
+      <span class="who">沟通达人 · 智能体</span>
+      <p id="bubble-text"></p>
+      <div id="bubble-choices" class="choices"></div>
+    </div>
+
+    <nav id="menu" class="menu" aria-label="书房功能"></nav>
+
+    <div id="dock" class="dock" hidden>
+      <div id="dock-chips" class="chips"></div>
+      <form id="dock-form" class="dock-form" autocomplete="off">
+        <input id="dock-input" type="text" maxlength="120" placeholder="说说你最近遇到的人际困扰，比如：小组作业有人甩锅…" />
+        <button type="submit">发送</button>
+      </form>
+    </div>
+
+    <aside id="panel" class="panel" hidden></aside>
+    <div id="tip" class="tip" hidden></div>
+
+    <div id="crosshair" class="crosshair" hidden>
+      <span class="ch-dot"></span>
+      <span class="ch-ring"></span>
+      <b id="xlabel" class="xlabel"></b>
+    </div>
+
+    <div id="hint" class="hint"><b>点击画面</b>开始漫游 · <b>W A S D</b> 移动 · 鼠标转视角 · <b>E</b> 交互 · <b>Esc</b> 释放鼠标</div>
+    <div id="mock" class="mock" hidden></div>
+
+    <div id="curtain" class="curtain" hidden></div>
+    <div id="loader" class="loader"><div class="ring"></div><span>正在点亮书房…</span></div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

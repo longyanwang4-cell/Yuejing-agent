@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "阅境 Agent 角色模拟模块·单轮输出",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "npc_line",
+    "tactic",
+    "state_delta",
+    "evidence",
+    "evidence_tag",
+    "should_end",
+    "end_reason",
+    "escalation_stage"
+  ],
+  "properties": {
+    "npc_line": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "tactic": {
+      "enum": [
+        "press",
+        "probe",
+        "guilt_trip",
+        "appeal_to_relationship",
+        "minimize",
+        "deflect",
+        "concede_partial",
+        "accept"
+      ]
+    },
+    "state_delta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rapport", "pressure", "user_position_clarity", "npc_concession"],
+      "properties": {
+        "rapport": { "type": "integer", "minimum": -25, "maximum": 25 },
+        "pressure": { "type": "integer", "minimum": -25, "maximum": 25 },
+        "user_position_clarity": { "type": "integer", "minimum": 0, "maximum": 25 },
+        "npc_concession": { "type": "integer", "minimum": -25, "maximum": 25 }
+      }
+    },
+    "evidence": {
+      "oneOf": [{ "type": "string", "minLength": 1, "maxLength": 40 }, { "type": "null" }]
+    },
+    "evidence_tag": {
+      "oneOf": [
+        {
+          "enum": [
+            "clear_refusal",
+            "vague",
+            "emotional",
+            "attack",
+            "concrete_request",
+            "concession",
+            "off_topic"
+          ]
+        },
+        { "type": "null" }
+      ]
+    },
+    "should_end": { "type": "boolean" },
+    "end_reason": {
+      "oneOf": [
+        { "enum": ["max_turns", "goal_reached", "rapport_broken", "user_ended"] },
+        { "type": "null" }
+      ]
+    },
+    "escalation_stage": { "type": "integer", "minimum": 1, "maximum": 3 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "should_end": { "const": true } }, "required": ["should_end"] },
+      "then": {
+        "properties": { "end_reason": { "type": "string" } },
+        "not": { "properties": { "end_reason": { "type": "null" } } }
+      }
+    },
+    {
+      "if": { "properties": { "should_end": { "const": false } }, "required": ["should_end"] },
+      "then": { "properties": { "end_reason": { "type": "null" } } }
+    },
+    {
+      "if": { "properties": { "evidence": { "type": "null" } }, "required": ["evidence"] },
+      "then": { "properties": { "evidence_tag": { "type": "null" } } }
+    },
+    {
+      "if": {
+        "properties": { "evidence": { "type": "string" } },
+        "required": ["evidence"]
+      },
+      "then": {
+        "properties": { "evidence_tag": { "type": "string" } },
+        "not": { "properties": { "evidence_tag": { "type": "null" } } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "evidence_tag": { "enum": ["attack", "vague", "off_topic"] } },
+        "required": ["evidence_tag"]
+      },
+      "then": {
+        "properties": {
+          "state_delta": {
+            "properties": {
+              "user_position_clarity": { "maximum": 5 },
+              "npc_concession": { "maximum": 0 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "tactic": { "const": "accept" } }, "required": ["tactic"] },
+      "then": { "properties": { "should_end": { "const": true } } }
+    }
+  ]
+}

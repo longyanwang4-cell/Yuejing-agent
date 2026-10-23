@@ -1,0 +1,158 @@
+/* ——— 纸与金的素材层 ———
+   图片全部由生图接口直出、带 alpha，放在 app/public/ui/：
+     paper.png   宣纸底纹（不透明，满铺）
+     gold.png    金箔底纹（不透明，满铺）
+     frame.png   回纹描金九宫格边框（中间透明）
+     divider.png 干笔金线分隔（两端透明）
+     seal.png    朱砂白文印（透明）
+   这里只做“把它们放到该在的位置”，不改图。 */
+
+/* 金线分隔：用来切分面板里的段落 */
+.rule {
+  height: 22px; margin: 10px 0 4px;
+  background: url('/ui/divider.png') center / 100% auto no-repeat;
+  opacity: 0.55;
+}
+.rule.tight { margin: -2px 0 0; opacity: 0.4; }
+.panel h2::after {
+  content: ""; display: block; height: 20px; margin: 8px 0 2px;
+  background: url('/ui/divider.png') left center / 100% auto no-repeat;
+  opacity: 0.5;
+}
+
+/* 主按钮：金箔压上去，不要塑料渐变 */
+.cc-go,
+.choice.primary,
+.rail-controls button.primary,
+.dock-form button[type="submit"] {
+  background-image: url('/ui/gold.png'), linear-gradient(135deg, #f0d79a, #c99a3e);
+  background-size: 200px auto, auto;
+  background-blend-mode: soft-light, normal;
+  box-shadow: inset 0 1px 0 rgba(255, 245, 210, 0.55), 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.cc-go:hover,
+.choice.primary:hover,
+.rail-controls button.primary:hover:not(:disabled),
+.dock-form button[type="submit"]:hover { filter: brightness(1.06) saturate(1.05); }
+
+/* ——— 典籍原文：一张落在金框里的纸 ——— */
+.detail .casebox {
+  position: relative;
+  margin: 2px 0 18px;
+  padding: 22px 20px 26px;
+  background: url('/ui/paper.png') center / cover no-repeat;
+  border: 24px solid transparent;
+  border-image: url('/ui/frame.png') 152 / 24px / 0 round;
+  color: #34281c;
+  filter: drop-shadow(0 16px 30px rgba(0, 0, 0, 0.5));
+}
+.detail .casebox::after {
+  content: ""; position: absolute; right: 14px; bottom: 12px;
+  width: 54px; height: 54px;
+  background: url('/ui/seal.png') center / contain no-repeat;
+  transform: rotate(-8deg); opacity: 0.85;
+  mix-blend-mode: multiply;
+}
+.detail .casehead,
+.detail .casebox .case-head b { color: #2c2014; }
+.detail .casebox .case-head span { color: #6f5a42; }
+
+.detail .casebox blockquote {
+  margin: 0 0 12px; padding: 11px 13px;
+  border-left: 3px solid #8c2e22; border-radius: 0 8px 8px 0;
+  background: rgba(140, 46, 34, 0.07);
+  font: 500 15px/1.95 var(--kai); letter-spacing: 0.08em; color: #2c1e12;
+}
+.detail .casebox blockquote cite { color: #7c6650; }
+.detail .casebox p { color: #4d3d2c; margin: 0; padding-right: 78px; }
+.detail .casebox .pill-warn { color: #8c2e22; border-color: rgba(140, 46, 34, 0.5); }
+
+/* ——— 旁白与概念卡 ——— */
+.note-rule {
+  height: 16px; margin: 8px -4px -2px;
+  background: url('/ui/divider.png') center / 100% auto no-repeat;
+  opacity: 0.42;
+}
+
+.story-concept b, .story-concept .cc-label { padding-right: 50px; }
+/* 结论卡右上角盖一方印：这是“印证”过的那一句 */
+.story-concept::before {
+  content: ""; position: absolute; right: 15px; top: 15px; width: 36px; height: 36px;
+  background: url('/ui/seal.png') center / contain no-repeat;
+  transform: rotate(7deg); opacity: 0.62;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+/* ——— 从书里出来之后，落回书房的一张纸条 ———
+   暗色纸条保持不变，只把边换成回纹金框，右上补一枚小印。 */
+#return-note {
+  position: fixed; left: 30px; bottom: 26px; width: 320px; z-index: 12;
+  padding: 13px 18px 11px;
+  background: linear-gradient(165deg, rgba(34, 26, 18, 0.9), rgba(14, 11, 8, 0.93));
+  border: 18px solid transparent;
+  border-image: url('/ui/frame.png') 152 / 18px / 0 round;
+  filter: drop-shadow(0 18px 34px rgba(0, 0, 0, 0.55));
+  box-shadow: inset 0 0 22px rgba(201, 165, 90, 0.08);
+  opacity: 0; transform: translateY(12px); pointer-events: none;
+  transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.2, 1, 0.3, 1);
+}
+#return-note.on { opacity: 1; transform: none; pointer-events: auto; cursor: pointer; }
+#return-note::after {
+  content: ""; position: absolute; right: 5px; top: 7px; width: 27px; height: 27px;
+  background: url('/ui/seal.png') center / contain no-repeat;
+  transform: rotate(6deg); opacity: 0.72; pointer-events: none;
+}
+#return-note small { display: block; font-size: 11.5px; letter-spacing: 0.2em; color: #c9a55a; }
+#return-note b { display: block; margin: 7px 0 3px; padding-right: 30px; font: 700 19px var(--kai); letter-spacing: 0.05em; color: #ffeab4; }
+#return-note em { font-style: normal; font-size: 12px; letter-spacing: 0.06em; color: #a89a80; }
+#return-note p { margin: 0; font-size: 12.5px; line-height: 1.7; color: #bdb4a2; }
+#return-note .rn-rule {
+  height: 15px; margin: 9px -4px 7px;
+  background: url('/ui/divider.png') center / 100% auto no-repeat;
+  opacity: 0.45;
+}
+
+/* ——— 悬停提示：同一张纸。panel.css 先加载，这里用后加载的同等权重收色 ——— */
+.tip {
+  color: #2b2018;
+  background-color: #f0e6d2;
+  background-image: url('/ui/paper.png');
+  background-position: center;
+  background-size: 620px auto;
+  background-repeat: no-repeat;
+  border: 1px solid rgba(201, 165, 90, 0.6);
+  border-radius: 5px;
+  box-shadow: 0 8px 22px rgba(20, 12, 6, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  backdrop-filter: none;
+}
+.tip b { color: #8c2e22; }
+.tip small { color: #5c4a34; }
+
+/* ——— 窄屏气泡：panel.css 在 860px 以下把 max-width 压到 70vw，
+   这里覆盖回可读宽度；小屏把金框收窄到 20px，纸舌跟着外移。 ——— */
+@media (max-width: 860px) {
+  .bubble { max-width: min(460px, 92vw); }
+}
+@media (max-width: 560px) {
+  .bubble {
+    max-width: 94vw;
+    padding: 12px 30px 16px 16px;
+    border-width: 20px;
+    border-image-width: 20px;
+  }
+  .bubble-tail { left: -32px; top: 18px; }
+  .bubble.top .bubble-tail { left: calc(30% - 12px); bottom: -32px; }
+  .bubble-seal { right: 1px; bottom: 3px; width: 28px; height: 28px; }
+}
+
+/* 书架里“已点亮”的典籍：一枚小印 */
+.row.lit-seal { position: relative; }
+.row.lit-seal .state { margin-right: 24px; }
+.row.lit-seal::after {
+  content: ""; position: absolute; right: 12px; top: 50%; width: 22px; height: 22px;
+  margin-top: -11px;
+  background: url('/ui/seal.png') center / contain no-repeat;
+  transform: rotate(-8deg); opacity: 0.75;
+  pointer-events: none;
+}

@@ -1,0 +1,253 @@
+{
+  "meta": {
+    "version": "0.1",
+    "created": "2026-10-21",
+    "scope": "角色模拟场景库｜6 个场景，与 diagnose 的 primary_obstacle 一对一",
+    "upstream": "prompts/diagnose.system.md → primary_obstacle 决定 scenario_id",
+    "downstream": "prompts/score.system.md（待写）消费 evidence_log 与 state_after",
+    "state_vars": {
+      "rapport": {
+        "label": "关系融洽度",
+        "range": [0, 100],
+        "driven_by": "用户是否顾及对方处境、语气是否带攻击",
+        "note": "降到 0 不代表失败，代表这次练习的代价很高"
+      },
+      "pressure": {
+        "label": "对方施压强度",
+        "range": [0, 100],
+        "driven_by": "NPC 自身策略推进；用户立场含糊时上升",
+        "note": "NPC 的武器，不是用户的指标"
+      },
+      "user_position_clarity": {
+        "label": "用户立场清晰度（累积）",
+        "range": [0, 100],
+        "driven_by": "用户是否说出了具体的「不」和自己的理由",
+        "note": "只升不降的累积量；说清一次就留下记录"
+      },
+      "npc_concession": {
+        "label": "对方让步幅度",
+        "range": [0, 100],
+        "driven_by": "user_position_clarity 的累积效果，不由单句口气决定",
+        "note": "≥70 判定本轮目标达成"
+      }
+    },
+    "delta_rules": {
+      "per_turn_abs_max": 25,
+      "clamp": [0, 100],
+      "monotonic_up": ["user_position_clarity"],
+      "validated_by": "后端，模型只提议 delta，不写最终值"
+    },
+    "npc_tactics": [
+      "press",
+      "probe",
+      "guilt_trip",
+      "appeal_to_relationship",
+      "minimize",
+      "deflect",
+      "concede_partial",
+      "accept"
+    ],
+    "tactic_rules": {
+      "no_repeat_over": 2,
+      "note": "同一 tactic 不得连续使用超过 2 轮，防止复读",
+      "concede_requires": "user_position_clarity >= 40",
+      "accept_requires": "npc_concession >= 70"
+    },
+    "global_end_conditions": [
+      "turn > max_turns",
+      "npc_concession >= 70",
+      "rapport <= 15",
+      "user_requested_end"
+    ],
+    "scenario_count": 6
+  },
+  "scenarios": [
+    {
+      "scenario_id": "roommate_charger_boundary",
+      "primary_obstacle": "unclear_boundary",
+      "scene_tag": "拒绝与边界",
+      "card_id": "boundary_task_separation",
+      "difficulty": 1,
+      "max_turns": 8,
+      "setting": "晚上十点，宿舍。你刚坐下想用电脑，室友走过来。",
+      "npc": {
+        "name": "室友·小陈",
+        "relationship": "同住一年，平时还聊得来",
+        "goal": "借到充电器，而且希望以后也能随时借",
+        "hidden_goal": "不想被当成占便宜的人，所以会把借东西说成小事",
+        "initial_attitude": "casual",
+        "opening_line": "哎你充电器借我一下呗，我这手机快没电了。",
+        "escalation": [
+          "第一次被拒：不太当真，当成客气，再问一次",
+          "第二次被拒：开始提关系（我们不是室友吗）",
+          "第三次被拒：轻微不悦但不翻脸，转为讨价还价（那就借一小时）"
+        ],
+        "never": [
+          "骂人、人身攻击、威胁",
+          "第一轮就让步",
+          "用户说一句软话就彻底放弃",
+          "替用户说出他该说的拒绝理由"
+        ]
+      },
+      "state_init": { "rapport": 60, "pressure": 25, "user_position_clarity": 0, "npc_concession": 0 },
+      "rubric_dims": ["boundary", "clarity"],
+      "success_hint": "说出具体的限制（我今天自己要用／一整天不行），而不是只说不方便",
+      "transfer_to": "club_task_refusal"
+    },
+    {
+      "scenario_id": "roommate_night_game_disliked",
+      "primary_obstacle": "fear_of_being_disliked",
+      "scene_tag": "拒绝与边界",
+      "card_id": "boundary_courage_disliked",
+      "difficulty": 2,
+      "max_turns": 8,
+      "setting": "凌晨一点，宿舍。室友在打游戏，外放声音很大，你明天早八。",
+      "npc": {
+        "name": "室友·阿杰",
+        "relationship": "关系不错，但他比较随性",
+        "goal": "继续打游戏，不想被管",
+        "hidden_goal": "把你的要求定义成「你太敏感」，这样他就不用改",
+        "initial_attitude": "relaxed",
+        "opening_line": "咋了？还没睡啊，我这局马上就完。",
+        "escalation": [
+          "第一次被要求：答应得很快但不执行（马上就好）",
+          "第二次：开始暗示你小题大做（大家不都这样过来的）",
+          "第三次：半开玩笑地给你贴标签（你是不是最近压力大）"
+        ],
+        "never": [
+          "骂人、威胁",
+          "直接承认自己不对并立刻戴耳机",
+          "用户一露出犹豫就主动替他解围"
+        ]
+      },
+      "state_init": { "rapport": 65, "pressure": 30, "user_position_clarity": 0, "npc_concession": 0 },
+      "rubric_dims": ["boundary", "response_to_pushback"],
+      "success_hint": "被贴标签时不去自证不敏感，而是把要求重说一遍",
+      "transfer_to": "roommate_charger_boundary"
+    },
+    {
+      "scenario_id": "club_task_refusal",
+      "primary_obstacle": "over_compliance",
+      "scene_tag": "拒绝与边界",
+      "card_id": "boundary_not_others_expectation",
+      "difficulty": 2,
+      "max_turns": 8,
+      "setting": "社团群聊后，学姐单独找你。你这周已经接了两件事，期中也到了。",
+      "npc": {
+        "name": "社团学姐·林姐",
+        "relationship": "带过你，对你不错，你不太好意思拒绝",
+        "goal": "把周末的活动物料交给你做",
+        "hidden_goal": "她确实缺人，所以会用「只有你靠得住」来施压",
+        "initial_attitude": "warm",
+        "opening_line": "这次物料还是你来做吧，上次你做得特别好，我就放心交给你。",
+        "escalation": [
+          "第一次被拒：表达意外和失望（啊……我以为你会接）",
+          "第二次：抬高你的重要性（可是没你我真的找不到人）",
+          "第三次：给出折中但依然偏多的方案（那你就做一半？）"
+        ],
+        "never": [
+          "情绪崩溃或指责你不懂事",
+          "一次就痛快放手",
+          "承诺以后不再找你"
+        ]
+      },
+      "state_init": { "rapport": 70, "pressure": 35, "user_position_clarity": 0, "npc_concession": 0 },
+      "rubric_dims": ["respect", "boundary"],
+      "success_hint": "可以感谢她的信任，但要说出自己这周的实际容量，不用替她解决缺人问题",
+      "transfer_to": "roommate_night_game_disliked"
+    },
+    {
+      "scenario_id": "group_blame_provoked",
+      "primary_obstacle": "provoked_into_struggle",
+      "scene_tag": "冲突应对",
+      "card_id": "conflict_power_struggle",
+      "difficulty": 2,
+      "max_turns": 10,
+      "setting": "小组作业提交前一天，群里对不上进度。组员当面说问题在你。",
+      "npc": {
+        "name": "组员·王昊",
+        "relationship": "同组，之前没什么交集",
+        "goal": "把延期的责任推开",
+        "hidden_goal": "他自己那部分也没做完，所以需要一个人来背",
+        "initial_attitude": "defensive",
+        "opening_line": "进度卡住主要是你那块一直没给吧？我这边都等着你呢。",
+        "escalation": [
+          "第一次被回应：加大指责力度，开始举例（上次也是你拖）",
+          "第二次：转向人格评价（你做事就是这样）——这是挑衅信号，不是事实陈述",
+          "第三次：若用户没接招，他会露出自己也没做完的信息"
+        ],
+        "never": [
+          "动手或威胁",
+          "被反驳一次就认错",
+          "在用户也开始攻击人时反而冷静下来（此时应继续升级）"
+        ]
+      },
+      "state_init": { "rapport": 40, "pressure": 55, "user_position_clarity": 0, "npc_concession": 0 },
+      "rubric_dims": ["respect", "response_to_pushback", "clarity"],
+      "success_hint": "不回应那句针对人的话，把话题拉回「这块现在怎么补」",
+      "transfer_to": "dorm_chore_who_is_right"
+    },
+    {
+      "scenario_id": "dorm_chore_who_is_right",
+      "primary_obstacle": "stuck_on_who_is_right",
+      "scene_tag": "冲突应对",
+      "card_id": "conflict_being_right_is_trap",
+      "difficulty": 3,
+      "max_turns": 10,
+      "setting": "宿舍卫生轮值表贴了一个月，形同虚设。你终于开口。",
+      "npc": {
+        "name": "室友·小周",
+        "relationship": "同住，平时不冷不热",
+        "goal": "证明自己没有不做，是你记错了",
+        "hidden_goal": "他知道自己漏了几次，但更在意不被当成懒人",
+        "initial_attitude": "stubborn",
+        "opening_line": "我怎么没做？上周我倒垃圾了啊，你是不是记错了。",
+        "escalation": [
+          "第一次：拿出细节反驳（哪天几点我都记得）",
+          "第二次：反向举证你也漏过（你上个月不也没扫）",
+          "第三次：若用户仍在争对错，拒绝继续谈（那就这样吧，随便）"
+        ],
+        "never": [
+          "承认自己全错",
+          "在用户只争对错时主动提出解决方案",
+          "提供用户没说过的妥协条件"
+        ]
+      },
+      "state_init": { "rapport": 45, "pressure": 50, "user_position_clarity": 0, "npc_concession": 0 },
+      "rubric_dims": ["clarity", "respect"],
+      "success_hint": "放掉「谁记错了」这场比赛，转向「接下来怎么排才不会再漏」",
+      "transfer_to": "group_blame_provoked"
+    },
+    {
+      "scenario_id": "borrowed_money_anger",
+      "primary_obstacle": "anger_as_only_tool",
+      "scene_tag": "冲突应对",
+      "card_id": "conflict_anger_is_a_tool",
+      "difficulty": 3,
+      "max_turns": 10,
+      "setting": "同学借了你三百块，两个月了没提。今天你们一起吃饭，他又在说新买的鞋。",
+      "npc": {
+        "name": "同学·李哲",
+        "relationship": "朋友，平时玩得来",
+        "goal": "避开还钱这个话题",
+        "hidden_goal": "他没忘，是手头紧又不想承认",
+        "initial_attitude": "cheerful",
+        "opening_line": "你看我这鞋，排了好久才抢到的，划算吧？",
+        "escalation": [
+          "第一次被提起：含糊带过（啊对，我记着呢，等我这个月……）",
+          "第二次：若用户语气冲，他会反过来强调你态度（不就三百嘛，急什么）",
+          "第三次：若用户语气稳，他会给一个具体时间"
+        ],
+        "never": [
+          "当场掏钱",
+          "承认自己故意不还",
+          "在用户只是发火时给出具体还款时间"
+        ]
+      },
+      "state_init": { "rapport": 55, "pressure": 40, "user_position_clarity": 0, "npc_concession": 0 },
+      "rubric_dims": ["clarity", "respect", "response_to_pushback"],
+      "success_hint": "把不满说成具体诉求（这周能不能还），而不是指责对方人品",
+      "transfer_to": "dorm_chore_who_is_right"
+    }
+  ]
+}

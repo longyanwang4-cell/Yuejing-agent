@@ -1,0 +1,135 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "阅境 Agent 评分复盘模块输出",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "scenario_id",
+    "scores",
+    "overall",
+    "strengths",
+    "improvements",
+    "card_reference",
+    "next_action",
+    "next_scenario_id",
+    "next_reason",
+    "user_facing_intro"
+  ],
+  "definitions": {
+    "dim": { "enum": ["clarity", "respect", "boundary", "response_to_pushback"] },
+    "score": { "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 100 }, { "type": "null" }] },
+    "feedbackBase": {
+      "type": "object",
+      "required": ["dim", "turn", "quote", "comment"],
+      "properties": {
+        "dim": { "$ref": "#/definitions/dim" },
+        "turn": { "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }] },
+        "quote": { "oneOf": [{ "type": "string", "minLength": 1, "maxLength": 50 }, { "type": "null" }] },
+        "comment": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "turn": { "type": "null" } }, "required": ["turn"] },
+          "then": { "properties": { "quote": { "type": "null" } } }
+        },
+        {
+          "if": { "properties": { "quote": { "type": "null" } }, "required": ["quote"] },
+          "then": { "properties": { "turn": { "type": "null" } } }
+        }
+      ]
+    }
+  },
+  "properties": {
+    "scenario_id": { "type": "string", "minLength": 1 },
+    "scores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clarity", "respect", "boundary", "response_to_pushback"],
+      "properties": {
+        "clarity": { "$ref": "#/definitions/score" },
+        "respect": { "$ref": "#/definitions/score" },
+        "boundary": { "$ref": "#/definitions/score" },
+        "response_to_pushback": { "$ref": "#/definitions/score" }
+      }
+    },
+    "overall": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "strengths": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {
+        "allOf": [{ "$ref": "#/definitions/feedbackBase" }],
+        "additionalProperties": false,
+        "properties": {
+          "dim": true,
+          "turn": true,
+          "quote": true,
+          "comment": true
+        }
+      }
+    },
+    "improvements": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {
+        "allOf": [{ "$ref": "#/definitions/feedbackBase" }],
+        "additionalProperties": false,
+        "required": ["dim", "turn", "quote", "comment", "suggestion"],
+        "properties": {
+          "dim": true,
+          "turn": true,
+          "quote": true,
+          "comment": true,
+          "suggestion": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "card_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["card_id", "concept", "link_to_turn", "note"],
+      "properties": {
+        "card_id": {
+          "enum": [
+            "boundary_task_separation",
+            "boundary_courage_disliked",
+            "boundary_not_others_expectation",
+            "conflict_power_struggle",
+            "conflict_being_right_is_trap",
+            "conflict_anger_is_a_tool"
+          ]
+        },
+        "concept": { "type": "string", "minLength": 1 },
+        "link_to_turn": { "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }] },
+        "note": { "type": "string", "minLength": 1, "maxLength": 300 }
+      }
+    },
+    "next_action": { "enum": ["retry_same", "review_card", "transfer_new"] },
+    "next_scenario_id": { "oneOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }] },
+    "next_reason": { "type": "string", "minLength": 1 },
+    "user_facing_intro": { "type": "string", "minLength": 1 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "next_action": { "const": "transfer_new" } }, "required": ["next_action"] },
+      "then": {
+        "properties": { "next_scenario_id": { "type": "string", "minLength": 1 } },
+        "not": { "properties": { "next_scenario_id": { "type": "null" } } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "next_action": { "enum": ["retry_same", "review_card"] } },
+        "required": ["next_action"]
+      },
+      "then": { "properties": { "next_scenario_id": { "type": "null" } } }
+    },
+    {
+      "if": { "properties": { "next_action": { "const": "transfer_new" } }, "required": ["next_action"] },
+      "then": { "properties": { "overall": { "minimum": 70 } } }
+    },
+    {
+      "if": { "properties": { "next_action": { "const": "review_card" } }, "required": ["next_action"] },
+      "then": { "properties": { "overall": { "maximum": 49 } } }
+    }
+  ]
+}

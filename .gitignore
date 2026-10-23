@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node（阶段 1 之后会用到）
+node_modules/
+dist/
+build/
+.env
+.env.local
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.playwright-mcp/
+
+# Office 临时文件
+~$*
+
+# 密钥。公开仓库里一旦推上去就收不回来，所以这里宁可多写几条。
+# （art/ui/_gen.cjs 的注释里说 key.txt 已被忽略，但此前并没有真的写进来。）
+key.txt
+**/key.txt
+*.pem
+*.key
+.env.*
+!.env.example
+
+# 上一位的个人笔记，不属于项目
+AGENT-LOG.md
+
+# 部署时本机生成的东西
+*.log
+backend/.venv/
+
+# 不随公开仓库发布：
+#   art/       生图的原始图与中间脚本，成品已在 app/public/ui/
+#   背景材料/   团队内部的 PRD、方案书与概念图，含商业模式和问卷数据
+art/
+背景材料/
